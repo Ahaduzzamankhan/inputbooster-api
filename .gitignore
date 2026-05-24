@@ -1,0 +1,21 @@
+# Gradle / Build directories
+.gradle/
+build/
+out/
+ECHO is on.
+# Minecraft / Loom / Run logs
+run/
+logs/
+.fabric/
+ECHO is on.
+# IDEs and Editor files
+.idea/
+.vscode/
+.settings/
+.classpath
+.project
+ECHO is on.
+# OS generated files
+Thumbs.db
+Desktop.ini
+.DS_Store
