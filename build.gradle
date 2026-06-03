@@ -18,17 +18,21 @@ repositories {
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modCompileOnly "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    testImplementation "org.junit.jupiter:junit-jupiter:${project.junit_version}"
 }
 
 processResources {
     inputs.property "version", project.version
     inputs.property "minecraft_version", project.minecraft_version
+    inputs.property "minecraft_version_range", project.minecraft_version_range
     filteringCharset "UTF-8"
     filesMatching("fabric.mod.json") {
         expand "version": project.version,
-               "minecraft_version": project.minecraft_version
+               "minecraft_version": project.minecraft_version,
+               "minecraft_version_range": project.minecraft_version_range,
+               "loader_version": project.loader_version
     }
 }
 
@@ -60,6 +64,10 @@ jar {
 javadoc {
     options.encoding = "UTF-8"
     options.addStringOption("Xdoclint:none", "-quiet")
+}
+
+test {
+    useJUnitPlatform()
 }
 
 publishing {

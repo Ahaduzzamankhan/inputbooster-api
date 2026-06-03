@@ -18,7 +18,7 @@ public final class InputBoosterAPIProvider {
      * Called exclusively by InputBooster's own init code.
      * Dependent mods should never call this.
      */
-    public static void register(InputBoosterAPI impl) {
+    public static synchronized void register(InputBoosterAPI impl) {
         if (impl == null) throw new IllegalArgumentException("InputBoosterAPI impl must not be null");
         if (instance != null) throw new IllegalStateException("InputBoosterAPI already registered");
         instance = impl;
@@ -45,7 +45,7 @@ public final class InputBoosterAPIProvider {
     }
 
     /** Internal: called by InputBooster during shutdown. */
-    public static void unregister() {
+    public static synchronized void unregister() {
         instance = null;
     }
 }

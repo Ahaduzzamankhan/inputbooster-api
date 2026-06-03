@@ -1,0 +1,165 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, for example 3.1.0. Leave empty to build only."
+        required: false
+        type: string
+      prerelease:
+        description: "Mark the GitHub release as a prerelease."
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build jar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: current
+
+      - name: Build
+        run: gradle build --no-daemon
+
+      - name: Upload jar artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: inputbooster-api-jars
+          path: |
+            build/libs/*.jar
+            !build/libs/*-sources.jar
+            !build/libs/*-javadoc.jar
+
+  minecraft-compatibility:
+    name: Compile against every stable 1.21.x
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: current
+
+      - name: Build every stable 1.21.x target
+        shell: bash
+        run: |
+          python .github/workflows/resolve_121_targets.py | while read -r minecraft_version yarn_mappings; do
+            echo "::group::Minecraft ${minecraft_version} (${yarn_mappings})"
+            gradle clean build \
+              -Pminecraft_version="${minecraft_version}" \
+              -Pyarn_mappings="${yarn_mappings}" \
+              --no-daemon
+            echo "::endgroup::"
+          done
+
+  release:
+    name: Publish GitHub release
+    needs:
+      - build
+      - minecraft-compatibility
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: current
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF_NAME}"
+            version="${tag#v}"
+          else
+            version="${{ inputs.version }}"
+            tag="v${version#v}"
+            version="${version#v}"
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release jars
+        run: gradle clean build -Pmod_version="${{ steps.version.outputs.version }}" --no-daemon
+
+      - name: Generate changelog
+        id: changelog
+        shell: bash
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          if git rev-parse "${tag}^{commit}" >/dev/null 2>&1; then
+            target="${tag}"
+            previous="$(git describe --tags --abbrev=0 "${tag}^" 2>/dev/null || true)"
+          else
+            target="HEAD"
+            previous="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+          fi
+          {
+            echo "## ${tag}"
+            echo
+            if [[ -n "${previous}" ]]; then
+              git log --pretty=format:'- %s (%h)' "${previous}..${target}"
+            else
+              git log --pretty=format:'- %s (%h)' "${target}"
+            fi
+          } > RELEASE_CHANGELOG.md
+          cat RELEASE_CHANGELOG.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          args=()
+          if [[ "${{ inputs.prerelease }}" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          gh release create "${{ steps.version.outputs.tag }}" \
+            build/libs/*.jar \
+            --title "${{ steps.version.outputs.tag }}" \
+            --notes-file RELEASE_CHANGELOG.md \
+            --target "${GITHUB_SHA}" \
+            "${args[@]}"

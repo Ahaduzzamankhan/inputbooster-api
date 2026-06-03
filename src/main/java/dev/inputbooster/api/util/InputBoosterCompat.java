@@ -1,8 +1,14 @@
 package dev.inputbooster.api.util;
 
 import dev.inputbooster.api.InputBoosterAPI;
+import dev.inputbooster.api.InputBoosterMetadata;
 import dev.inputbooster.api.events.InputBoosterEvent;
 import dev.inputbooster.api.events.InputBoosterEventListener;
+
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * Compatibility utilities for mods that list InputBooster as an
@@ -38,10 +44,26 @@ public final class InputBoosterCompat {
      * Runs {@code action} with the API instance if InputBooster is loaded.
      * Does nothing (no exception) if the mod is absent.
      */
-    public static void ifLoaded(java.util.function.Consumer<InputBoosterAPI> action) {
+    public static void ifLoaded(Consumer<InputBoosterAPI> action) {
+        Objects.requireNonNull(action, "action");
         if (InputBoosterAPI.isLoaded()) {
             action.accept(InputBoosterAPI.getInstance());
         }
+    }
+
+    /**
+     * Returns the API instance when it is available.
+     */
+    public static Optional<InputBoosterAPI> getOptional() {
+        return InputBoosterAPI.getOptional();
+    }
+
+    /**
+     * Maps the API instance to a value, or returns {@code fallback} when absent.
+     */
+    public static <T> T mapOrDefault(Function<InputBoosterAPI, T> mapper, T fallback) {
+        Objects.requireNonNull(mapper, "mapper");
+        return InputBoosterAPI.isLoaded() ? mapper.apply(InputBoosterAPI.getInstance()) : fallback;
     }
 
     /**
@@ -58,6 +80,7 @@ public final class InputBoosterCompat {
      * Returns true if the listener was registered, false if InputBooster is absent.
      */
     public static boolean tryRegisterListener(InputBoosterEventListener listener) {
+        Objects.requireNonNull(listener, "listener");
         if (InputBoosterAPI.isLoaded()) {
             InputBoosterAPI.getInstance().registerListener(listener);
             return true;
@@ -80,6 +103,9 @@ public final class InputBoosterCompat {
     public static boolean registerForTypes(
             InputBoosterEventListener listener,
             InputBoosterEvent.Type... types) {
+        Objects.requireNonNull(listener, "listener");
+        Objects.requireNonNull(types, "types");
+        if (types.length == 0) return false;
         if (!InputBoosterAPI.isLoaded()) return false;
         java.util.Set<InputBoosterEvent.Type> allowed =
             java.util.EnumSet.copyOf(java.util.Arrays.asList(types));
@@ -100,7 +126,7 @@ public final class InputBoosterCompat {
         if (!InputBoosterAPI.isLoaded()) return "not loaded";
         try {
             return net.fabricmc.loader.api.FabricLoader.getInstance()
-                .getModContainer("inputbooster")
+                .getModContainer(InputBoosterMetadata.INPUTBOOSTER_MOD_ID)
                 .map(c -> c.getMetadata().getVersion().getFriendlyString())
                 .orElse("unknown");
         } catch (Exception e) {

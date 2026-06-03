@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "inputbooster-api",
+  "version": "${version}",
+  "name": "InputBooster API",
+  "description": "Public API for mods that integrate with InputBooster.",
+  "authors": [
+    "Ahaduzzaman Khan"
+  ],
+  "contact": {
+    "homepage": "https://modrinth.com/mod/inputbooster",
+    "sources": "https://github.com/ahaduzzamankhan/inputbooster-api"
+  },
+  "license": "MIT",
+  "icon": "assets/inputbooster-api/icon.png",
+  "environment": "client",
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "${minecraft_version_range}",
+    "java": ">=21"
+  },
+  "suggests": {
+    "inputbooster": ">=${version}"
+  }
+}

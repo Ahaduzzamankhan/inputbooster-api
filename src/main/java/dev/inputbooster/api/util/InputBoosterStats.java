@@ -20,6 +20,28 @@ public final class InputBoosterStats {
 
     private InputBoosterStats() {}
 
+    /**
+     * Immutable snapshot of the most commonly displayed InputBooster stats.
+     */
+    public record Snapshot(
+        boolean loaded,
+        boolean active,
+        boolean autoMode,
+        boolean burstModeActive,
+        int pollRateHz,
+        int fps,
+        int currentCps,
+        int maxCps,
+        long recoveredInputs,
+        long totalHits,
+        double averageLatencyMs,
+        double peakLatencyMs
+    ) {
+        public static Snapshot unloaded() {
+            return new Snapshot(false, false, false, false, 0, 0, 0, 0, 0L, 0L, 0.0, 0.0);
+        }
+    }
+
     /** Current poll rate in Hz, or 0 if not loaded. */
     public static int hz() {
         return InputBoosterAPI.isLoaded() ? InputBoosterAPI.getInstance().getPollRateHz() : 0;
@@ -68,6 +90,28 @@ public final class InputBoosterStats {
     /** True if InputBooster is in AUTO (FPS-adaptive) mode. */
     public static boolean isAutoMode() {
         return InputBoosterAPI.isLoaded() && InputBoosterAPI.getInstance().isAutoMode();
+    }
+
+    /**
+     * Captures a consistent one-call view of the current InputBooster stats.
+     */
+    public static Snapshot snapshot() {
+        if (!InputBoosterAPI.isLoaded()) return Snapshot.unloaded();
+        InputBoosterAPI api = InputBoosterAPI.getInstance();
+        return new Snapshot(
+            true,
+            api.isActive(),
+            api.isAutoMode(),
+            api.isBurstModeActive(),
+            api.getPollRateHz(),
+            api.getCurrentFps(),
+            api.getCurrentCps(),
+            api.getMaxCps(),
+            api.getRecoveredInputs(),
+            api.getTotalHits(),
+            api.getAverageLatencyMs(),
+            api.getPeakLatencyMs()
+        );
     }
 
     /**

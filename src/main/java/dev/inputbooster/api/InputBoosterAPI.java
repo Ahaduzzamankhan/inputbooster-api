@@ -18,19 +18,19 @@ package dev.inputbooster.api;
  *     maven { url "https://maven.fabricmc.net/" }
  * }
  * dependencies {
- *     modImplementation "dev.inputbooster:inputbooster-api:3.0.1"
+ *     modImplementation "dev.inputbooster:inputbooster-api:3.1.0"
  * }
  * </pre>
  *
  * <h2>fabric.mod.json</h2>
  * <pre>
  * "depends": {
- *     "inputbooster": ">=3.0.1"
+ *     "inputbooster": ">=3.1.0"
  * }
  * </pre>
  *
  * @author Ahaduzzaman Khan
- * @version 3.0.1
+ * @version 3.1.0
  */
 public interface InputBoosterAPI {
 
@@ -52,6 +52,15 @@ public interface InputBoosterAPI {
      */
     static boolean isLoaded() {
         return InputBoosterAPIProvider.isAvailable();
+    }
+
+    /**
+     * Returns the live API instance if available.
+     */
+    static java.util.Optional<InputBoosterAPI> getOptional() {
+        return isLoaded()
+            ? java.util.Optional.of(getInstance())
+            : java.util.Optional.empty();
     }
 
     // ── Poll rate ─────────────────────────────────────────────────────────────
