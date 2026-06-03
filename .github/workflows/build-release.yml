@@ -89,7 +89,7 @@ jobs:
       - build
       - minecraft-compatibility
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.version != '')
+    if: github.event_name != 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -114,8 +114,12 @@ jobs:
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             tag="${GITHUB_REF_NAME}"
             version="${tag#v}"
-          else
+          elif [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.version }}" ]]; then
             version="${{ inputs.version }}"
+            tag="v${version#v}"
+            version="${version#v}"
+          else
+            version="$(grep '^mod_version=' gradle.properties | cut -d= -f2)"
             tag="v${version#v}"
             version="${version#v}"
           fi
@@ -157,9 +161,18 @@ jobs:
           if [[ "${{ inputs.prerelease }}" == "true" ]]; then
             args+=(--prerelease)
           fi
-          gh release create "${{ steps.version.outputs.tag }}" \
-            build/libs/*.jar \
-            --title "${{ steps.version.outputs.tag }}" \
-            --notes-file RELEASE_CHANGELOG.md \
-            --target "${GITHUB_SHA}" \
-            "${args[@]}"
+          if gh release view "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            gh release edit "${{ steps.version.outputs.tag }}" \
+              --title "${{ steps.version.outputs.tag }}" \
+              --notes-file RELEASE_CHANGELOG.md \
+              --target "${GITHUB_SHA}" \
+              "${args[@]}"
+            gh release upload "${{ steps.version.outputs.tag }}" build/libs/*.jar --clobber
+          else
+            gh release create "${{ steps.version.outputs.tag }}" \
+              build/libs/*.jar \
+              --title "${{ steps.version.outputs.tag }}" \
+              --notes-file RELEASE_CHANGELOG.md \
+              --target "${GITHUB_SHA}" \
+              "${args[@]}"
+          fi
